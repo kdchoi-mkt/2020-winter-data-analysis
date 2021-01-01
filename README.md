@@ -15,5 +15,5 @@ git checkout -b <branch_name>
 ```
 그 후, 코드를 수정해서 master 레포지토리에 병합할 경우에는 다음과 같이 코드를 작성하여 pull request를 요청한다.
 ```
-git pull origin <branch_name>
+git push origin <branch_name>
 ```
