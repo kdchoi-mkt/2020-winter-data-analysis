@@ -130,6 +130,3 @@ dmypy.json
 
 # do not upload csv file
 *.csv
-
-# do not update .json file
-*.json
