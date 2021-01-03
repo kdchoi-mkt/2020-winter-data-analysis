@@ -3,7 +3,7 @@ import random
 
 def refine_log_data(data_frame: pd.DataFrame,
                     random_seed: int = 3141592,
-                    upper_bound: int = 10) -> tuple:
+                    lower_bound: int = 10) -> tuple:
     """Refine the log data to construct cross-sectional data.
 
     Parameter
@@ -12,7 +12,7 @@ def refine_log_data(data_frame: pd.DataFrame,
 
     `random_seed`: Control the random seed to cut the log data.
     
-    `upper_bound`: The function will cut at least `upper_bound`th log data for each user.
+    `lower_bound`: The function will cut at least `lower_bound`th log data for each user.
     """
     random.seed(random_seed)
 
@@ -27,7 +27,7 @@ def refine_log_data(data_frame: pd.DataFrame,
     return train_log_data, test_log_data
 
 def derive_random_cutoff_data(log_data: pd.DataFrame,
-                              upper_bound: int) -> pd.DataFrame:
+                              lower_bound: int) -> pd.DataFrame:
     """Return the user data with cut off information.
 
     If the total log count for the user is less than the upper bound, return the cut off value as the log count.
@@ -35,7 +35,7 @@ def derive_random_cutoff_data(log_data: pd.DataFrame,
 
     For Example
     ===========
-    For the `upper_bound = 10`, 
+    For the `lower_bound = 10`, 
 
     | user_id | total_log_count | cutoff_position |
     |---------|-----------------|-----------------|
