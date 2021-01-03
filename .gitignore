@@ -133,3 +133,6 @@ dmypy.json
 
 # do not upload private file
 private_*.ipynb
+
+# do not update .json file
+*.json
