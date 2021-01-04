@@ -3,7 +3,7 @@ import random
 
 def refine_log_data(data_frame: pd.DataFrame,
                     random_seed: int = 3141592,
-                    upper_bound: int = 10) -> tuple:
+                    lower_bound: int = 10) -> tuple:
     """Refine the log data to construct cross-sectional data.
 
     Parameter
@@ -12,12 +12,12 @@ def refine_log_data(data_frame: pd.DataFrame,
 
     `random_seed`: Control the random seed to cut the log data.
     
-    `upper_bound`: The function will cut at least `upper_bound`th log data for each user.
+    `lower_bound`: The function will cut at least `lower_bound`th log data for each user.
     """
     random.seed(random_seed)
 
     log_data = shift_question_info(data_frame)
-    log_count_data = derive_random_cutoff_data(data_frame, upper_bound)
+    log_count_data = derive_random_cutoff_data(data_frame, lower_bound)
 
     log_data = pd.merge(data_frame, log_count_data, on = 'user_id')
 
@@ -27,15 +27,15 @@ def refine_log_data(data_frame: pd.DataFrame,
     return train_log_data, test_log_data
 
 def derive_random_cutoff_data(log_data: pd.DataFrame,
-                              upper_bound: int) -> pd.DataFrame:
+                              lower_bound: int) -> pd.DataFrame:
     """Return the user data with cut off information.
 
-    If the total log count for the user is less than the upper bound, return the cut off value as the log count.
+    If the total log count for the user is less than the lower bound, return the cut off value as the log count.
     However, the multi-question group does not calculated in the total log count.
 
     For Example
     ===========
-    For the `upper_bound = 10`, 
+    For the `lower_bound = 10`, 
 
     | user_id | total_log_count | cutoff_position |
     |---------|-----------------|-----------------|
@@ -43,8 +43,8 @@ def derive_random_cutoff_data(log_data: pd.DataFrame,
     |    2    |       2         |        2        |
     """
     def _get_cutoff_position(task_tuple):
-        if upper_bound <= len(task_tuple):
-            return random.choice(task_tuple[upper_bound - 1:])
+        if lower_bound <= len(task_tuple):
+            return random.choice(task_tuple[lower_bound - 1:])
         return task_tuple[-1]
 
     log_data['question_count'] = log_data.groupby(['user_id', 'task_container_id'])['row_id'].transform(func = 'count')
