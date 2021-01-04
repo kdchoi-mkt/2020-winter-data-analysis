@@ -31,7 +31,6 @@ def derive_random_cutoff_data(log_data: pd.DataFrame,
     """Return the user data with cut off information.
 
     If the total log count for the user is less than the lower bound, return the cut off value as the log count.
-    However, the multi-question group does not calculated in the total log count.
 
     For Example
     ===========
@@ -47,8 +46,7 @@ def derive_random_cutoff_data(log_data: pd.DataFrame,
             return random.choice(task_tuple[lower_bound - 1:])
         return task_tuple[-1]
 
-    log_data['question_count'] = log_data.groupby(['user_id', 'task_container_id'])['row_id'].transform(func = 'count')
-    log_data = log_data[(log_data['question_count'] == 1) & (log_data['content_type_id'] == 0)]
+    log_data = log_data[(log_data['question_count'] == 1)]
     log_data = log_data.sort_values(['user_id', 'task_container_id'])
 
     task_data = log_data.groupby(['user_id'])[['task_container_id']]\
