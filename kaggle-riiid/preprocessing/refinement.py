@@ -78,5 +78,6 @@ def shift_question_info(log_data: pd.DataFrame) -> pd.DataFrame:
     
     task_data = question_data[identify_columns + prior_columns].drop_duplicates()
     task_data[['question_elapsed_time', 'question_had_explanation']] = task_data.groupby('user_id')[prior_columns].shift(-1)
-    
+    task_data = task_data.drop(columns = prior_columns)
+
     return pd.merge(log_data, task_data, on = ['user_id', 'task_container_id'], how = 'left')
