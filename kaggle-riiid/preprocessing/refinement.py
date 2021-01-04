@@ -17,9 +17,9 @@ def refine_log_data(data_frame: pd.DataFrame,
     random.seed(random_seed)
 
     log_data = shift_question_info(data_frame)
-    log_count_data = derive_random_cutoff_data(data_frame, lower_bound)
+    log_count_data = derive_random_cutoff_data(log_data, lower_bound)
 
-    log_data = pd.merge(data_frame, log_count_data, on = 'user_id')
+    log_data = pd.merge(log_data, log_count_data, on = 'user_id')
 
     train_log_data  = log_data[log_data['task_container_id'] < log_data['cutoff_position']]
     test_log_data = log_data[log_data['task_container_id'] == log_data['cutoff_position']]
