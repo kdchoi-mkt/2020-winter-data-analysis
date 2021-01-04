@@ -46,7 +46,7 @@ def derive_random_cutoff_data(log_data: pd.DataFrame,
             return random.choice(task_tuple[lower_bound - 1:])
         return task_tuple[-1]
 
-    log_data = log_data[(log_data['question_count'] == 1)]
+    log_data = log_data[(log_data['content_type_id'] == 0)]
     log_data = log_data.sort_values(['user_id', 'task_container_id'])
 
     task_data = log_data.groupby(['user_id'])[['task_container_id']]\
