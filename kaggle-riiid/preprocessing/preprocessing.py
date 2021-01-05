@@ -29,6 +29,7 @@ def derive_question_info(log_data: pd.DataFrame, question_data: pd.DataFrame) ->
     7. `seen_explanation_rate`   : Seen explanation rate for each Part in the TOEIC
     8. `recently_solve_question` : The timestamp of recently solve question for each Part in the TOEIC
     9. `recently_correct_answer` : The indicator wheter the user corrected the answer in the previous question
+    10. `solved_question_tag_list`: The list of the tags that solved by user
 
     In fact, the function also have the total information for each variable described above.
 
@@ -58,7 +59,8 @@ def derive_question_info(log_data: pd.DataFrame, question_data: pd.DataFrame) ->
     """
     question_log_data = log_data[log_data['content_type_id'] == 0]
     question_log_data = pd.merge(question_log_data, question_data, left_on = 'content_id', right_on = 'question_id')
-    
+    question_log_data['tag_list'] = question_log_data['tags'].apply(lambda x: str(x).split(' '))
+
     # Sort by `row_id` to use `groupby.last()` method.
     # In fact, sort by `row_id` is same as sort by both `user_id` and `timestamp`
     question_log_data = question_log_data.sort_values(['row_id'])
@@ -88,7 +90,8 @@ def _derive_question_cross_sectional_data(user_gp: pd.core.groupby.generic.DataF
             user_gp['question_elapsed_time'].mean(),
             user_gp['question_elapsed_time'].sum(),
             user_gp['timestamp'].max(),
-            user_gp['answered_correctly'].last()
+            user_gp['answered_correctly'].last(),
+            user_gp['tag_list'].sum()
         ],
         index = [
             'answered_count',
@@ -97,14 +100,17 @@ def _derive_question_cross_sectional_data(user_gp: pd.core.groupby.generic.DataF
             'answer_elapsed_time_mean',
             'answer_elapsed_time_sum',
             'recently_solve_question',
-            'recently_correct_answer'
+            'recently_correct_answer',
+            'solved_question_tag_list'
         ]
     ).transpose()
 
     question_cross_sectional_data['correct_rate'] = question_cross_sectional_data['correct_count'] / question_cross_sectional_data['answered_count'] * 100
     question_cross_sectional_data['seen_explanation_rate'] = question_cross_sectional_data['seen_explanation_count'] / question_cross_sectional_data['answered_count'] * 100    
 
-    question_cross_sectional_data.columns = prefix + question_cross_sectional_data.columns    
-    question_cross_sectional_data = question_cross_sectional_data.astype('float')
+    question_cross_sectional_data.columns = prefix + question_cross_sectional_data.columns
+    
+    non_list_columns = [col for col in question_cross_sectional_data if 'list' not in col]
+    question_cross_sectional_data[non_list_columns] = question_cross_sectional_data[non_list_columns].astype('float')
 
     return question_cross_sectional_data.reset_index()
