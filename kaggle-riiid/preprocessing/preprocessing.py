@@ -12,39 +12,69 @@ def preprocessing(data_frame: pd.DataFrame, lecture_df: pd.DataFrame) -> pd.Data
 
 def derive_lecture_info(log_data: pd.DataFrame,
                            lectures_data: pd.DataFrame) -> pd.DataFrame :
-    """"""
+    """
+    각 user_id마다 part별 몇 개의 강의를 시청했는지를 part_df에 저장합니다. 
+    각 user_id마다 part별로 시청한 lecture의 type_of가 몇 개인지를 type_df에 저장합니다.
+    각 user_id마다 시청한 lecture의 서로 다른 tag개수를 tag_df에 저장합니다.
+    각 user_id마다 시청한 lecture의 timestamp df의 max 값을 timestamp_df에 저장합니다.
+    
+    """
     lecture_viewed_data = log_data[log_data['content_type_id'] == 1]
     lecture_viewed_data = pd.merge(lecture_viewed_data, lectures_data, left_on = 'content_id', right_on = 'lecture_id')
     
-    # 각 user_id마다 part별 몇 개의 강의를 시청했는지를 part_df에 저장합니다. 
-    part_one_hot_df = lecture_viewed_data.join(pd.get_dummies(lecture_viewed_data['part'], prefix="lecture_part"))
-    part_list = list(set('lecture_part_' + part_one_hot_df['part'].astype('string')))
-    part_df = part_one_hot_df.groupby('user_id')[part_list].sum().reset_index()
+    lecture_viewed_data = lecture_viewed_data.join(pd.get_dummies(lecture_viewed_data['type_of'], prefix='lecture_type_of'))
+    
+    part_data = _derive_part_data(lecture_viewed_data)
+    total_data = _derive_total_data(lecture_viewed_data)
 
-    # 각 user_id마다 part별로 시청한 lecture의 type_of가 몇 개인지를 type_df에 저장합니다.
-    part_typeof_one_hot_df = lecture_viewed_data.join(pd.get_dummies(lecture_viewed_data['type_of'], prefix='lecture_type_of'))
-    type_of_list = list(set('lecture_type_of_' + part_typeof_one_hot_df['type_of']))
-    part_type_df = part_typeof_one_hot_df.groupby(['user_id', 'part'])[type_of_list].sum().reset_index()
-    part_type_df = pd.pivot_table(part_type_df, values=type_of_list, index=['user_id'], columns=['part']).fillna(0)
-    type_df = lecture_viewed_data[['user_id']]
-    for col in type_of_list :
-        tmp_df = part_type_df[col]
-        tmp_df.columns = col + tmp_df.columns.astype('string')
-        type_df = type_df.merge(tmp_df.reset_index(), on=['user_id'])
+    return part_data.join(total_data).reset_index()
 
-    # 각 user_id마다 시청한 lecture의 서로 다른 tag개수를 tag_df에 저장합니다.
-    tag_df = lecture_viewed_data.groupby(['user_id', 'part'])[['tag']].nunique().reset_index()
-    tag_df = pd.pivot_table(tag_df, values=['tag'], index=['user_id'], columns=['part']).fillna(0)
-    tag_df.columns = 'tag_' + tag_df['tag'].columns.astype('string')
-    tag_df = tag_df.reset_index()
+def _derive_part_data(lecture_viewed_data: pd.DataFrame) -> pd.DataFrame:
+    """Derive the part-wise individual feature descrived in the `derive_lecture_info()` docstring."""    
+    type_of_list = list(set('lecture_type_of_' + lecture_viewed_data['type_of']))
 
-    # 각 user_id마다 시청한 lecture의 서로 다른 tag개수를 tag_df에 저장합니다.
-    timestamp_df = lecture_viewed_data.groupby(['user_id', 'part'])['timestamp'].max().reset_index()
-    timestamp_df = pd.pivot_table(timestamp_df, values=['timestamp'], index=['user_id'], columns=['part']).fillna(0)
-    timestamp_df.columns = 'max_timestamp_' + timestamp_df['timestamp'].columns.astype('string')
-    timestamp_df = timestamp_df.reset_index()
+    tag_df = _derive_pivot_data(lecture_viewed_data, value_col = ['tag'], aggfunc = 'nunique')
+    type_df = _derive_pivot_data(lecture_viewed_data, value_col = type_of_list, aggfunc = 'count')
+    part_df = _derive_pivot_data(lecture_viewed_data, value_col = ['content_id'], aggfunc = 'count')
+    timestamp_df = _derive_pivot_data(lecture_viewed_data, value_col = ['timestamp'], aggfunc = 'max')
 
-    part_and_type = pd.merge(part_df, type_df, on='user_id')
-    tag_and_timestamp = pd.merge(tag_df, timestamp_df, on='user_id')
+    return part_df.join(type_df)\
+                  .join(tag_df)\
+                  .join(timestamp_df)
 
-    return pd.merge(part_and_type, tag_and_timestamp, on='user_id')
+def _derive_total_data(lecture_viewed_data: pd.DataFrame) -> pd.DataFrame:
+    """Derive the total individual feature data described in the `derive_lecture_info()` docstring"""
+    type_of_list = list(set('lecture_type_of_' + lecture_viewed_data['type_of']))
+    user_gp = lecture_viewed_data.groupby(['user_id'])
+
+    total_df = pd.DataFrame(
+        data = [
+            user_gp['tag'].nunique(),
+            user_gp['content_id'].count(),
+            user_gp['timestamp'].max()
+        ],
+        index = [
+            'total_tag_nunique',
+            'total_content_id_count',
+            'total_timestamp_max'
+        ]
+    ).transpose()
+
+    type_of_df = user_gp[type_of_list].sum()
+    type_of_df.columns += '_count'
+
+    return total_df.join(type_of_df)
+
+def _derive_pivot_data(data_frame: pd.DataFrame, value_col: list, aggfunc: str, index: str = 'user_id', column: str = 'part') -> pd.DataFrame:
+    """Derive pivot table for the data frame with regard to the index, column, values.
+    
+    In general, the function is used to derive pivot data of `user_id` and `part`, therefore the function initializes the index and column as user_id and part respectively."""
+    pivot_data = data_frame.pivot_table(values = value_col, index=[index], columns=[column], aggfunc = aggfunc).fillna(0)
+    total_data = pd.DataFrame()
+
+    for col in value_col:
+        objective_data = pivot_data[col]
+        objective_data.columns = f"{col}_{aggfunc}_{column}_" + objective_data.columns.astype(str)
+        total_data = total_data.join(objective_data, how = 'outer')
+
+    return total_data
