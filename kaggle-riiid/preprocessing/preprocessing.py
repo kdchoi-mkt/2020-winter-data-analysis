@@ -39,7 +39,7 @@ def derive_lecture_info(log_data: pd.DataFrame,
     part_data = _derive_part_data(lecture_viewed_data)
     total_data = _derive_total_data(lecture_viewed_data)
 
-    return part_data.join(total_data).reset_index()
+    return part_data.join(total_data)
 
 def _derive_part_data(lecture_viewed_data: pd.DataFrame) -> pd.DataFrame:
     """Derive the part-wise individual feature descrived in the `derive_lecture_info()` docstring."""    
