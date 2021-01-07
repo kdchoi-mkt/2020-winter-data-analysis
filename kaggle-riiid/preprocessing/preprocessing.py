@@ -10,9 +10,9 @@ def preprocessing(data_frame: pd.DataFrame, question_data: pd.DataFrame) -> pd.D
     `question_data`: The overall question informations.
     """
 
-    data_frame = derive_lecture_info(data_frame, lecture_df)
-    data_frame = derive_question_info(data_frame, question_data)
-    data_frame = derive_df_user_info(data_frame)
+    lecture_data = derive_lecture_info(log_data, lecture_meta_data)
+    question_data = derive_question_info(log_data, question_meta_data)
+    objection_data = derive_user_info(lecture_data, question_data, objection_data, question_meta_data, question_overall_data)
 
     return data_frame
 
@@ -183,3 +183,74 @@ def _derive_question_cross_sectional_data(user_gp: pd.core.groupby.generic.DataF
     question_cross_sectional_data[non_list_columns] = question_cross_sectional_data[non_list_columns].astype('float')
 
     return question_cross_sectional_data.reset_index()
+
+def derive_user_info(lecture_data, answer_data, objection_data, question_meta_data, question_overall_data):
+    """Derive objection data to train machine.
+    코드 가용성은 최대한 줄였으며, 코드 복잡도는 최대한으로 올렸습니다."""
+    question_pivot_col = 'part'
+    question_pivot_index = 'user_id'
+    question_pivot_value_list = [col for col in answer_data.columns if ('total' not in col) and (col not in ['user_id', 'part'])]
+    total_value_list = [col for col in answer_data.columns if 'total' in col]
+
+    question_pivot_df = pd.DataFrame()
+    for col in question_pivot_value_list:
+        pivot_table = answer_data.pivot(values = col, index = question_pivot_index, columns = question_pivot_col)
+        pivot_table.columns = f"{col}_" + pivot_table.columns.astype(str)
+        question_pivot_df = question_pivot_df.join(pivot_table, how = 'outer')
+
+    answer_data = answer_data[total_value_list + ['user_id']].drop_duplicates(['user_id'])\
+                                                                 .set_index('user_id')\
+                                                                 .join(question_pivot_df)
+
+    total_feature_data = answer_data.join(lecture_data)
+
+    objection_data = objection_data.set_index('user_id')
+    objection_data = objection_data.join(total_feature_data)
+    objection_data = objection_data.merge(question_meta_data, left_on = 'content_id', right_on = 'question_id')
+    objection_data['tag_list'] = objection_data['tags'].apply(lambda x: str(x).split(' '))
+
+    tag_list = [col for col in objection_data.columns if 'list' in col and col != 'tag_list']
+    
+    def overlap(row, parse):
+        try:
+            if parse == 'total':
+                compare_set = set(row['total_solved_question_tag_list'])
+            else:
+                compare_set = set(row[f'solved_question_tag_list_{parse}'])
+            question_tag = set(row['tag_list'])
+
+            return len(question_tag.intersection(compare_set)) > 0 
+        except:
+            return False
+
+    for col in tag_list:
+        if 'total' in col:
+            parse = 'total'    
+        else:
+            parse = col[-1]
+        objection_data[f'is_solved_tag_on_{parse}'] = objection_data.apply(lambda x: overlap(x, parse), axis = 1)
+
+    question_overall_data = question_overall_data.set_index('content_id')
+    question_overall_data.columns = 'question_' + question_overall_data.columns
+    objection_data = objection_data.merge(question_overall_data, on = 'content_id')
+
+    objection_data = objection_data.drop(
+        columns = ['Unnamed: 0', 'row_id', 'question_id', 'task_container_id', 'user_answer', 
+        'prior_question_elapsed_time', 'prior_question_had_explanation', 'question_elapsed_time', 
+        'question_had_explanation', 'cutoff_position', 
+        'total_solved_question_tag_list',
+        'solved_question_tag_list_1',
+        'solved_question_tag_list_2',
+        'solved_question_tag_list_3',
+        'solved_question_tag_list_4',
+        'solved_question_tag_list_5',
+        'solved_question_tag_list_6',
+        'solved_question_tag_list_7',
+        'question_id',
+        'bundle_id',
+        'correct_answer',
+        'part',
+        'tags',
+        'tag_list', 'content_id', 'content_type_id'])
+
+    return objection_data
