@@ -1,20 +1,27 @@
 import pandas as pd
 import numpy as np
 
-def preprocessing(data_frame: pd.DataFrame, question_data: pd.DataFrame) -> pd.DataFrame:
+def preprocessing(log_data: pd.DataFrame, 
+                  objection_data: pd.DataFrame,
+                  lecture_meta_data: pd.DataFrame, 
+                  question_meta_data: pd.DataFrame,
+                  question_overall_data: pd.DataFrame) -> pd.DataFrame:
     """Preprocess users' learning behavior to analyze with machine learning.
     
     Parameter
     =========
-    `data_frame`: The user's history log data.
-    `question_data`: The overall question informations.
+    `log_data`: The user's history log data.
+    `lecture_meta_data`: The overall lecture informations.
+    `question_meta_data`: The overall question informations.
+    `question_overall_data`: The overall question informations about the questions' correction rate.
+    `objection_data`: The objective data that will be used to train or test the Machine Learning performance.
     """
 
     lecture_data = derive_lecture_info(log_data, lecture_meta_data)
     question_data = derive_question_info(log_data, question_meta_data)
     objection_data = derive_user_info(lecture_data, question_data, objection_data, question_meta_data, question_overall_data)
 
-    return data_frame
+    return objection_data
 
 def derive_lecture_info(log_data: pd.DataFrame,
                            lectures_data: pd.DataFrame) -> pd.DataFrame :
@@ -23,7 +30,6 @@ def derive_lecture_info(log_data: pd.DataFrame,
     각 user_id마다 part별로 시청한 lecture의 type_of가 몇 개인지를 type_df에 저장합니다.
     각 user_id마다 시청한 lecture의 서로 다른 tag개수를 tag_df에 저장합니다.
     각 user_id마다 시청한 lecture의 timestamp df의 max 값을 timestamp_df에 저장합니다.
-    
     """
     lecture_viewed_data = log_data[log_data['content_type_id'] == 1]
     lecture_viewed_data = pd.merge(lecture_viewed_data, lectures_data, left_on = 'content_id', right_on = 'lecture_id')
@@ -84,7 +90,7 @@ def _derive_pivot_data(data_frame: pd.DataFrame, value_col: list, aggfunc: str, 
         total_data = total_data.join(objective_data, how = 'outer')
 
     return total_data
-    
+
 def derive_question_info(log_data: pd.DataFrame, question_data: pd.DataFrame) -> pd.DataFrame:
     """Feature engineering the user information with regard to the user's question answered history.
 
@@ -203,7 +209,6 @@ def derive_user_info(lecture_data, answer_data, objection_data, question_meta_da
                                                                  .join(question_pivot_df)
 
     total_feature_data = answer_data.join(lecture_data)
-
     objection_data = objection_data.set_index('user_id')
     objection_data = objection_data.join(total_feature_data)
     objection_data = objection_data.merge(question_meta_data, left_on = 'content_id', right_on = 'question_id')
@@ -252,5 +257,7 @@ def derive_user_info(lecture_data, answer_data, objection_data, question_meta_da
         'part',
         'tags',
         'tag_list', 'content_id', 'content_type_id'])
+
+
 
     return objection_data
