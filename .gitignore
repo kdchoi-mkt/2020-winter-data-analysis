@@ -128,8 +128,14 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-# do not upload csv file
+# do not upload file
 *.csv
+
+# do not upload private file
+private_*.ipynb
 
 # do not upload json file
 *.json
+*.pdf
+*.key
+*.pkl
