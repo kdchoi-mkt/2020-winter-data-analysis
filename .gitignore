@@ -132,7 +132,7 @@ dmypy.json
 *.csv
 
 # do not upload private file
-private_*.ipynb
+*.ipynb
 
 # do not upload json file
 *.json
