@@ -3,19 +3,11 @@ from datetime import datetime
 from constant import SUPPORT_STRATEGY, QUALITY_COLUMN
 
 def preprocessing(error_data: pd.DataFrame, quality_data: pd.DataFrame) -> pd.DataFrame:
-    user_data = derive_user_base_data(error_data)
     err_data = derive_err_related_data(error_data)
     quality_data = derive_quality_related_data(quality_data)
     
-    return user_data.join(err_data, how = 'outer')\
-                    .join(quality_data, how = 'outer')\
-                    .fillna(0)
-
-def derive_user_base_data(log_data: pd.DataFrame) -> pd.DataFrame:
-    """Derive user index data from error report data.
-
-    In fact, the error report data has whole user ID"""
-    return pd.DataFrame(index = [log_data['user_id'].unique])
+    return err_data.join(quality_data, how = 'outer')\
+                   .fillna(0)
 
 def derive_err_related_data(error_data: pd.DataFrame) -> pd.DataFrame:
     """Derive error related data with the error_data log.
@@ -34,7 +26,7 @@ def derive_err_related_data(error_data: pd.DataFrame) -> pd.DataFrame:
 
     date_error_data = error_data.groupby(['user_id', 'date', 'errtype'])[['errtype']]\
                                 .count()\
-                                .rename({'errtype': 'err_count'})\
+                                .rename(columns = {'errtype': 'err_count'})\
                                 .reset_index()
 
     user_error_ind_data = derive_err_related_individual_data(date_error_data)
@@ -78,14 +70,14 @@ def derive_err_related_total_data(date_error_data: pd.DataFrame) -> pd.DataFrame
             'distinct_err',
             'distinct_err_per_date'
         ]
-    ).transpose().reset_index()
+    ).transpose()
 
     return user_error_data
 
 # Private Functions
 
 def _derive_pivot_table(data_frame, columns = 'errtype', index = 'user_id', value = 'err_count', method = 'max'):
-    """Derive pivot table for error.
+    """Derive pivot table.
     Because the function is usually used to derive err-related data, the initial value is set by error related.
     
     The column has prefix and it is '{method}_{value}'
@@ -133,11 +125,11 @@ def refine_quality_data(quality_data, filling_strategy):
         raise ValueError(f"The filling strategy {filling_strategy} does not support!")
     
     quality_data['time'] = quality_data['time'].apply(lambda x: datetime.strptime(str(x), '%Y%m%d%H%M%S'))
-    quality_col = [col for col in quality_data.columns if 'quality' in col]
-
-    quality_data[quality_col] = quality_data[quality_col].astype('str')\
-                                                         .apply(lambda row: [x.replace(',', '') for x in row])\
-                                                         .astype('float')
+    quality_data['fwver'] = quality_data['fwver'].fillna('missing')
+    
+    quality_data[QUALITY_COLUMN] = quality_data[QUALITY_COLUMN].astype('str')\
+                                                               .apply(lambda row: [x.replace(',', '') for x in row])\
+                                                               .astype('float')
 
     if filling_strategy == 1:
         return quality_data.groupby(['user_id', 'time', 'fwver']).mean(), quality_data.groupby(['user_id', 'time', 'fwver']).var()

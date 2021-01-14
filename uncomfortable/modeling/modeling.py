@@ -1,12 +1,14 @@
 # Model Training & Performance Metric
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import roc_curve, auc, accuracy_score, f1_score, log_loss, precision_score, recall_score
+from statsmodels.api import add_constant
 
 # Progress Bar
 from tqdm.notebook import tqdm
 
-# Data Preprocessing Model
+# Util Module
 import pandas as pd
+import datetime
 
 def report_model_result(X, y, SKLearnModel, threshold_list = [0.5], random_state = 3141592, return_model = False, **hyperparameter):
     """Report the result for the model's overall performance. 
@@ -113,3 +115,12 @@ def GridSearchModel(SKLearnClassifier, hyperparameter_candidate, X, y, random_st
     hyperparam_df['AUC'] = hyperparam_df.progress_apply(lambda x: derive_auc_local(x.to_dict()), axis = 1)
         
     return hyperparam_df
+
+def predict_uncomfortable(test_data, model_name, classifier_model, random_state = 3141592):
+    now = datetime.datetime.now().strftime('%m%d')
+    X = add_constant(test_data)
+    
+    test_data['problem'] = classifier_model.predict_proba(X).T[1]
+    test_data[['problem']].reset_index().to_csv(f'../resources/output/report_{now}_{model_name}.csv', index = False)
+    
+    return test_data[['problem']]
