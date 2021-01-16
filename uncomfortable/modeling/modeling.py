@@ -30,7 +30,7 @@ def report_model_result(X, y, SKLearnModel, threshold_list = [0.5], random_state
     `Recall`
     `F1 Score`
     """
-    X_train, X_test, y_train, y_test = train_test_split(X, y, random_state = random_state)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, random_state = random_state, test_size = 0.3)
     
     # Model Fitting
     model = SKLearnModel(random_state = random_state, **hyperparameter)
