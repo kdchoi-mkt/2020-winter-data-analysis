@@ -8,7 +8,7 @@ LGBM_HYPERPARAM_CANDIDATE = {
     'n_jobs': [-1]
 }
 
-GBC_HYPERPARRAM_CANDIDATE = {
+GBC_HYPERPARAM_CANDIDATE = {
     'loss': ['deviance', 'exponential'],
     'criterion': ['friedman_mse', 'mse', 'mae'],
     'max_features': ['auto', 'sqrt', 'log2'],
@@ -21,7 +21,7 @@ GBC_HYPERPARRAM_CANDIDATE = {
 
 }
 
-RF_HYPERPARRAM_CANDIDATE = {
+RF_HYPERPARAM_CANDIDATE = {
     'criterion': ['gini', 'entropy'],
     'max_features': ['auto', 'sqrt', 'log2'],
     'n_estimators': [50, 100, 150, 200],
@@ -29,4 +29,15 @@ RF_HYPERPARRAM_CANDIDATE = {
     'min_samples_split': [10, 20, 30, 40, 50],
     'min_samples_leaf': [10, 20, 30, 40, 50],
     'n_jobs': [-1],
+}
+
+
+FINAL_LGBM_PARAMETER = {
+    'boosting_type': 'gbdt',
+    'num_leaves': 50,
+    'learning_rate': 0.03,
+    'n_estimators': 200,
+    'reg_alpha': 0.2,
+    'reg_lambda': 0.3,
+    'n_jobs': 2
 }
