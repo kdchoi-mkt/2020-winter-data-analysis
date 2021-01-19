@@ -9,8 +9,10 @@ def preprocessing(error_data: pd.DataFrame, quality_data: pd.DataFrame) -> pd.Da
     err_data = derive_err_related_data(error_data)
     quality_data = derive_quality_related_data(quality_data, fw_model_matcher)
     
-    return err_data.join(quality_data, how = 'outer')\
-                   .fillna(0)
+    total_data = err_data.join(quality_data, how = 'outer')
+    total_data['has_quality_data'] = ~pd.isna(total_data['count_quality_L2_norm']) * 1
+    
+    return total_data.fillna(0)
 
 def derive_fw_model_matcher(error_data: pd.DataFrame) -> pd.DataFrame:
     """Derive fw-model matcher from error data.
@@ -97,26 +99,30 @@ def derive_err_related_total_type_data(error_data: pd.DataFrame) -> pd.DataFrame
 
     user_error_data = pd.DataFrame(
         data = [
-            user_err_gp['date'].nunique(),
+            user_error_gp['date'].nunique(),
             user_error_gp['errtype'].nunique(),
             error_data.groupby(['user_id', 'date'])['errtype']\
                       .nunique()\
                       .reset_index()\
                       .groupby(['user_id'])['errtype']\
                       .mean(),
-            user_err_gp['errcode'].nunique(),
+            user_error_gp['errcode'].nunique(),
             error_data.groupby(['user_id', 'date'])['errcode']\
                       .nunique()\
                       .reset_index()\
                       .groupby(['user_id'])['errcode']\
                       .mean(),
+            user_error_gp['model_nm'].nunique(),
+            user_error_gp['fwver'].nunique(),
         ],
         index = [
             'distinct_date',
             'distinct_err_type',
             'distinct_err_type_per_date',
             'distinct_err_code',
-            'distinct_err_code_per_date'
+            'distinct_err_code_per_date',
+            'distinct_err_model',
+            'distinct_err_fever'
         ]
     ).transpose()
 
@@ -231,9 +237,9 @@ def derive_quality_related_total_data(mean_quality_data, var_quality_data, error
     var_quality_data = pd.merge(var_quality_data, fw_model_matcher, on = 'fwver', how = 'outer')
     error_occurred_data = pd.merge(error_occurred_data, fw_model_matcher, on = 'fwver', how = 'outer')
 
-    mean_quality_data['model_nm'] = mean_quality_data['model_nm'].fillna(0)
-    var_quality_data['model_nm'] = var_quality_data['model_nm'].fillna(0)
-    error_occurred_data['model_nm'] = error_occurred_data['model_nm'].fillna(0)
+    mean_quality_data['model_nm'] = mean_quality_data['model_nm'].fillna('model_missing')
+    var_quality_data['model_nm'] = var_quality_data['model_nm'].fillna('model_missing')
+    error_occurred_data['model_nm'] = error_occurred_data['model_nm'].fillna('model_missing')
         
     model_quality_count_data = _derive_pivot_table(mean_quality_data, columns = 'model_nm', value = 'quality_L2_norm', method = 'count')
     model_quality_mean_data = _derive_pivot_table(mean_quality_data, columns = 'model_nm', value = 'quality_L2_norm', method = 'mean')
